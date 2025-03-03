@@ -13,7 +13,6 @@ def tokenize(text, doc_id):
     tokens = normalize_token(tokens)
     return [(token, doc_id) for token in tokens if token]
 
-import string
 from nltk.stem import PorterStemmer
 
 def normalize_token(tokens):
@@ -29,30 +28,33 @@ def normalize_token(tokens):
 import psutil
 import os
 import time
-
+from pympler import asizeof
 
 def get_memory_usage():
     process = psutil.Process()
-    return process.memory_info().rss / 1024 / 1024  # Convert to MB
+    # return process.memory_info().rss / 1024 / 1024  # Convert to MB
+    return process.memory_info().peak_wset / 1024 / 1024  # Convert to MB
 
 from collections import defaultdict
 
 def spimi_invert(files, block_size):
-    # files = list_files(input_directory)
     dictionary = defaultdict(set)
     blocks = []
     block_count = 0
     token_count = 0
-    # current_block_tokens = []
+
+    peak_dict_memory = 0
 
     for file_path in files:
         text = read_file(file_path)
 
         for token, doc_id in tokenize(text, file_path):
-            # normalized_token = normalize_token(token)
             dictionary[token].add(doc_id)
 
-            if token_count == block_size:
+            if token_count >= block_size:
+            # if len(dictionary) >= block_size:
+            # if sys.getsizeof(dictionary) >= block_size:
+                peak_dict_memory = max(peak_dict_memory, asizeof.asizeof(dictionary) / (1024 * 1024))
                 block_file = f"block_{block_count}.txt"
                 write_block_to_disk(dictionary, block_file)
                 blocks.append(block_file)
@@ -63,11 +65,12 @@ def spimi_invert(files, block_size):
                 token_count += 1
 
     if dictionary:
+        peak_dict_memory = max(peak_dict_memory, asizeof.asizeof(dictionary) / (1024 * 1024))
         block_file = f"block_{block_count}.txt"
         write_block_to_disk(dictionary, block_file)
         blocks.append(block_file)
 
-    return blocks
+    return blocks, peak_dict_memory
 
 def write_block_to_disk(dictionary, block_file):
     with open(block_file, 'w', encoding='utf-8') as f:
@@ -76,8 +79,6 @@ def write_block_to_disk(dictionary, block_file):
 
 import heapq
 def merge_blocks(blocks, output_file):
-    start_time = time.time()
-
     heap = []
     file_pointers = {block: open(block, 'r', encoding='utf-8') for block in blocks}
 
@@ -117,9 +118,6 @@ def merge_blocks(blocks, output_file):
     for f in file_pointers.values():
         f.close()
 
-    merge_time = time.time() - start_time
-    return merge_time
-
 
 def main(input_directory, block_size, output_file):
     total_start_time = time.time()
@@ -132,27 +130,29 @@ def main(input_directory, block_size, output_file):
 
     # SPIMI indexing
     indexing_start_time = time.time()
-    blocks = spimi_invert(files, block_size)
+    blocks, peak_dict_memory = spimi_invert(files, block_size)
     indexing_time = time.time() - indexing_start_time
 
     # Merge blocks and measure time
-    merge_time = merge_blocks(blocks, output_file)
+    merge_start_time = time.time()
+    merge_blocks(blocks, output_file)
+    merge_time = time.time() - merge_start_time
 
     total_time = time.time() - total_start_time
     peak_memory = get_memory_usage()
     memory_used = peak_memory - initial_memory
 
     # Print statistics
-    print(f"\nPerformance Statistics:")
-    print(f"File listing time: {files_time:.2f} seconds")
-    # print(f"Token processing time: {processing_time:.2f} seconds")
-    print(f"Indexing time: {indexing_time:.2f} seconds")
-    print(f"Merging time: {merge_time:.2f} seconds")
-    # print(f"Writing time: {writing_time:.2f} seconds")
-    print(f"Total time: {total_time:.2f} seconds")
-    print(f"Memory usage: {memory_used:.2f} MB")
-    print(f"Peak memory: {peak_memory:.2f} MB")
-    print(f"Number of blocks created: {len(blocks)}")
+    print(f"\n{'Performance Statistics':<20}")
+    print(f"{'File listing time:':<20} {files_time:>10.2f} seconds")
+    print(f"{'Indexing time:':<20} {indexing_time:>10.2f} seconds")
+    print(f"{'Merging time:':<20} {merge_time:>10.2f} seconds")
+    print(f"{'Total time:':<20} {total_time:>10.2f} seconds")
+    print(f"{'Memory usage:':<20} {memory_used:>10.2f} MB")
+    print(f"{'Peak memory:':<20} {peak_memory:>10.2f} MB")
+    print(f"{'Peak dict memory:':<20} {peak_dict_memory:>10.2f} MB")
+    print(f"{'Number of blocks:':<20} {len(blocks):>10} blocks")
+
 
 
 import configparser
