@@ -138,6 +138,8 @@ def main(input_directory, block_size, output_file):
     indexing_start_time = time.time()
     blocks, peak_dict_memory = spimi_invert(files, block_size)
     indexing_time = time.time() - indexing_start_time
+    peak_memory_spimi = get_memory_usage()
+    memory_used_spimi = peak_memory_spimi - initial_memory
 
     # Merge blocks and measure time
     merge_start_time = time.time()
@@ -155,6 +157,7 @@ def main(input_directory, block_size, output_file):
     print(f"{'Merging time:':<20} {merge_time:>10.2f} seconds")
     print(f"{'Total time:':<20} {total_time:>10.2f} seconds")
     print(f"{'Memory usage:':<20} {memory_used:>10.2f} MB")
+    print(f"{'SPIMI memory usage:':<20} {memory_used_spimi:>10.2f} MB")
     print(f"{'Peak memory:':<20} {peak_memory:>10.2f} MB")
     print(f"{'Peak dict memory:':<20} {peak_dict_memory:>10.2f} MB")
     print(f"{'Number of blocks:':<20} {len(blocks):>10} blocks")
