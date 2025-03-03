@@ -39,11 +39,11 @@ from collections import defaultdict
 
 def spimi_invert(files, block_size):
     dictionary = defaultdict(set)
-    blocks = []
+    blocks = [] # List to store block file names
     block_count = 0
-    token_count = 0
+    token_count = 0 # Counter for tokens processed in current block
 
-    peak_dict_memory = 0
+    peak_dict_memory = 0 # Track peak memory usage of dictionary (in MB)
 
     for file_path in files:
         text = read_file(file_path)
@@ -51,28 +51,34 @@ def spimi_invert(files, block_size):
         for token, doc_id in tokenize(text, file_path):
             dictionary[token].add(doc_id)
 
+            # If block size is reached, write to disk and reset dictionary
             if token_count >= block_size:
             # if len(dictionary) >= block_size:
             # if sys.getsizeof(dictionary) >= block_size:
                 peak_dict_memory = max(peak_dict_memory, asizeof.asizeof(dictionary) / (1024 * 1024))
-                block_file = f"block_{block_count}.txt"
+                block_file = f"./blocks/block_{block_count}.txt"
                 write_block_to_disk(dictionary, block_file)
                 blocks.append(block_file)
+
                 dictionary.clear()
                 block_count += 1
                 token_count = 0
             else:
                 token_count += 1
 
+    # Write remaining dictionary to disk if any data is left
     if dictionary:
         peak_dict_memory = max(peak_dict_memory, asizeof.asizeof(dictionary) / (1024 * 1024))
-        block_file = f"block_{block_count}.txt"
+        block_file = f"./blocks/block_{block_count}.txt"
         write_block_to_disk(dictionary, block_file)
         blocks.append(block_file)
 
     return blocks, peak_dict_memory
 
 def write_block_to_disk(dictionary, block_file):
+    if not os.path.exists('blocks'):
+        os.makedirs('blocks')
+
     with open(block_file, 'w', encoding='utf-8') as f:
         for token in sorted(dictionary.keys()):
             f.write(f"{token}: {', '.join(dictionary[token])}\n")
