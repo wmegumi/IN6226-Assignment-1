@@ -507,10 +507,11 @@ def main():
 
     # Compare performance (optional)
     test_queries = [
-        "Stevens",
-        "Mills AND Cheryl",
-        "Coleman OR Jones",
+        "SpecialAssistants AND SES",
+        "(State AND Department) NOT UNCLASSIFIED",
+        "(Benghazi OR Stevens) AND (call OR spoke) AND NOT number",
         "Stevens NOT condolence",
+        "((Mills OR Coleman) AND Steven) NOT condolence"
     ]
     compare_performance(index_file, compressed_file, test_queries)
 
